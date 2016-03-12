@@ -77,6 +77,13 @@ Requirements
 - zip (`apt-get install zip`)
 
 
+ToDo
+------------
+- Ask OxideMod admins for a json api
+- remove command
+- restore command
+- Tests
+
 License
 -------
 
