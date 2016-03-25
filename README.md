@@ -1,7 +1,7 @@
-OxideComposer - Plugin Managment for OxideMod
+OxideComposer - Plugin Management for OxideMod
 ========================================
 
-OComposer helps you declare, manage and install plugins of Oxidemod.org for Linux servers.
+OComposer helps you manage and install plugins of Oxidemod.org for Linux servers.
 
 **BETA** Only tested in Rust Experimental server.
 
@@ -21,7 +21,9 @@ Installation
 Install new plugins/list already installed ones
 ------------
 
-1. Run `ocomposer install PLUGIN_ID` . Example: having `http://oxidemod.org/plugins/stack-size-controller.1185/` => `ocomposer install stack-size-controller.1185` .
+1. Run `ocomposer install PLUGIN_ID` . 
+
+Example: having `http://oxidemod.org/plugins/stack-size-controller.1185/` => `ocomposer install stack-size-controller.1185` .
 
 Check for updates
 ------------
