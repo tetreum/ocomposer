@@ -12,7 +12,7 @@ class OxideComposer
 	public function __construct ()
 	{
 		if (!file_exists($this->composerFile)) {
-			throw new Exception($this->composerFile . " not found");
+			throw new Exception($this->composerFile . " not found", 1);
 		}
 
 		if (!is_dir($this->composerFolder)) {
@@ -34,18 +34,6 @@ class OxideComposer
 		}
 
 		$this->installedPlugins = $this->getInstalledPlugins();
-	}
-
-    /**
-     * Runs a terminal command
-     * @param string $command
-     * @return mixed
-     */
-	private function runCommand ($command)
-	{
-		exec($command, $out);
-
-		return $out;
 	}
 
     /**
@@ -126,9 +114,9 @@ class OxideComposer
      */
 	private function setJson ($file, $content)
 	{
-		$sucess = file_put_contents($file, json_encode($content, JSON_PRETTY_PRINT));
+		$success = file_put_contents($file, json_encode($content, JSON_PRETTY_PRINT));
 
-		if ($sucess === false) {
+		if ($success === false) {
 			throw new Exception("Could not create/update " . $file);
 		}
 	}
@@ -140,7 +128,7 @@ class OxideComposer
 	private function checkDependencies ()
 	{
 		if(empty(shell_exec("which zip"))) {
-			throw new Exception("Missing required zip dependency");
+			throw new Exception("Missing required zip dependency (apt-get install zip)");
 		}
 	}
 
@@ -247,7 +235,7 @@ class OxideComposer
 		Utils::p("================================\n\nCreating backup $backupFile\n\n================================");
 
 		// zip oxide folder, excluding the logs subdirectory
-		$out = $this->runCommand("zip -r $backupFile " . $this->config->oxideFolder . ' -x "' . $this->config->oxideFolder . 'logs/*"');
+		$out = CommandLine::runCommand("zip -r $backupFile " . $this->config->oxideFolder . ' -x "' . $this->config->oxideFolder . 'logs/*"');
 
 		if (sizeof($out) < 3) {
 			throw new Exception("Could not create the backup $backupFile");

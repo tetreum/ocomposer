@@ -1,0 +1,1 @@
+wget https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/ocomposer && chmod +x ./ocomposer && mv ./ocomposer /usr/bin/;

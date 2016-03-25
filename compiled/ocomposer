@@ -1,0 +1,830 @@
+#!/usr/bin/env php 
+<?php
+
+
+class Utils
+{
+	/**
+	 * Checks if $response contains $str
+	 * @param string $response
+	 * @param string $str
+	 * @return bool
+	 */
+	public static function contains ($response, $str)
+	{
+		if (strpos($response, $str) !== false) {
+			return true;
+		}
+		return false;
+	}
+
+    /**
+     * Checks if oxidemod plugin version is greater than the installed one
+     * @param string $currentVersion Ex: 3.54.7
+     * @param string $ownVersion Ex: 2.3.6
+     * @return bool|int Returns 2 if the difference is a major release
+     */
+	public static function isGreater ($currentVersion, $ownVersion)
+	{
+		if ($currentVersion == $ownVersion) {
+			return false;
+		}
+
+		$cVersion = explode(".", $currentVersion);
+		$oVersion = explode(".", $ownVersion);
+		$totalSteps = sizeof($cVersion) - 1;
+
+		foreach ($cVersion as $k => $number) {
+			$oNumber = $oVersion[$k];
+
+			if ($oNumber == "x") {
+				$oNumber = 0;
+			}
+
+			if ($number < $oNumber) {
+				return false;
+			} else if ($number > $oNumber) {
+
+				// check if its a major version (as it maybe have breaking changes)
+				if ($k != $totalSteps) {
+					return 2;
+				}
+				return 1;
+			}
+		}
+		return false;
+	}
+
+    /**
+     * Prints a message adapted to cli or browser
+     * @param string $message
+     */
+	public static function p($message, $newline = true)
+    {
+		if ($newline) {
+			if (php_sapi_name() === 'cli') {
+				$message .= "\n";
+			} else {
+				$message .= "<br>";
+			}
+		}
+
+		echo $message;
+	}
+}
+
+
+
+/**
+ * Class CommandLine
+ * Receives CLI input and decides which command must run
+ */
+class CommandLine
+{
+	public static $debug = false;
+
+	public static $colorTags = [
+		"/<red>(.*)?<\/red>/",
+		"/<yellow>(.*)?<\/yellow>/",
+		"/<green>(.*)?<\/green>/",
+	];
+	public static $colorReplacements = [
+		"\033[31m$1\033[0m",
+		"\033[33m$1\033[0m",
+		"\033[32m$1\033[0m",
+	];
+
+    /***
+     * Parses the received command && decides which command must run
+     * @param array $arguments
+     */
+	public static function init ($arguments)
+	{
+        // check if ocomposer.json exists
+        try {
+            new OxideComposer();
+        } catch (Exception $e) {
+            if ($e->getCode() === 1) {
+                self::setup();
+                return;
+            }
+        }
+
+        if (!isset($arguments[1])) {
+            $arguments[1] = "help";
+        }
+
+		self::parseOptions($arguments);
+
+		switch ($arguments[1])
+		{
+			case "install":
+				self::install($arguments[2]);
+			break;
+			case "update":
+				self::update();
+			break;
+			case "about":
+				self::about();
+			break;
+            case "validate":
+				self::validate();
+			break;
+			default:
+				self::help();
+			break;
+		}
+	}
+
+    /**
+     * Checks for options in arguments list
+     * @param array $arguments
+     */
+	public static function parseOptions (&$arguments)
+	{
+        $firstChar = substr($arguments[1], 0, 1);
+
+		if ($firstChar == "-")
+		{
+			$option = substr($arguments[1], 1);
+
+			switch ($option) {
+				case "d":
+					self::$debug = true;
+				break;
+			}
+			// delete the option from arguments list
+			unset($arguments[1]);
+			$arguments = array_values($arguments);
+		}
+	}
+
+    /**
+     * Runs validate command
+     */
+	public static function validate ()
+	{
+        // OComposer construct already Validates them
+        try {
+            new OxideComposer();
+        } catch (Exception $e)
+		{
+			if (self::$debug) {
+				echo $e->__toString();
+			} else {
+				self::display("<red>" . $e->getMessage() . "</red>");
+			}
+			exit;
+		}
+
+        self::display("<green>They seem valid</green>");
+    }
+
+    /**
+     * Runs install command
+     * @param string $pluginId Ex: kits.668
+     */
+	public static function install ($pluginId)
+	{
+		try {
+            $composer = new OxideComposer();
+			$composer->install($pluginId);
+		} catch (Exception $e)
+		{
+			if (self::$debug) {
+				echo $e->__toString();
+			} else {
+				self::display("<red>" . $e->getMessage() . "</red>");
+			}
+			exit;
+		}
+	}
+
+    /**
+     * Runs update command
+     */
+	public static function update ()
+	{
+		try {
+            $composer = new OxideComposer();
+			$composer->update();
+		} catch (Exception $e)
+		{
+			if (self::$debug) {
+				echo $e->__toString();
+			} else {
+				self::display("<red>" . $e->getMessage() . "</red>");
+			}
+			exit;
+		}
+	}
+
+    /**
+     * Runs about command
+     */
+	public static function about () {
+		self::display("<yellow>Ocomposer is an oxide plugin manager for your servers.</yellow>\n<yellow>See https://github.com/tetreum/ocomposer for more information.</yellow>");
+	}
+
+    /**
+     * Colors & prints the given text
+     * @param string $text
+     */
+	public static function display ($text, $newline = true)
+	{
+		Utils::p(preg_replace(self::$colorTags, self::$colorReplacements, $text), $newline);
+	}
+
+    public static function setup ()
+    {
+        self::display("Config file (ocomposer.json) not found, starting setup....");
+
+        $paths = self::runCommand("find / -name \"oxide\" -type d");
+        if (empty($paths) || sizeof($paths) == 0) {
+            self::display("<red>Unable to find any /oxide/ folder in your server.</red>");
+            return;
+        }
+
+        $setupData = new stdClass();
+        $setupData->plugins = new stdClass();
+        $setupData->login = new stdClass();
+
+        self::display("<yellow>Ocomposer needs an OxideMod.org account to download the plugins, your login details will be saved in ocomposer.json.</yellow>");
+
+        self::prompt("Username: ", function ($response) use(&$setupData) {
+            $setupData->login->user = $response;
+        });
+
+        self::prompt("Password: ", function ($response) use(&$setupData) {
+            $setupData->login->password = $response;
+        });
+
+        self::display("<yellow>Select your server /serverfiles/ folder:</yellow>");
+        $plainList = "";
+
+        foreach ($paths as $k => $v) {
+            $plainList .= "[$k] - $v\n";
+        }
+        self::display($plainList);
+
+        self::prompt("Input the number: ", function ($response) use(&$setupData, $paths) {
+            $number = (int)$response;
+
+            if ($number > sizeof($paths) || $number < 0) {
+                $number = 0;
+            }
+
+            $setupData->oxideFolder = $paths[$number] . "/";
+        });
+
+        $saved = file_put_contents("ocomposer.json", json_encode($setupData, JSON_PRETTY_PRINT));
+
+        if ($saved === false) {
+            self::display("<red>Could not save ocomposer.json</red>");
+        } else {
+            self::display("<green>Config saved</green>");
+        }
+    }
+
+    /**
+     * Prompts a message requesting user input
+     * @param string $message
+     * @param $callback
+     * @param boolean $newline
+     */
+    public static function prompt ($message, $callback, $newline = false)
+    {
+        self::display($message, $newline);
+
+        $handle = fopen ("php://stdin","r");
+        $line = fgets($handle);
+
+        $callback(trim($line));
+
+        fclose($handle);
+    }
+
+    /**
+     * Runs a terminal command
+     * @param string $command
+     * @return mixed
+     */
+    public static function runCommand ($command)
+    {
+        exec($command, $out);
+
+        return $out;
+    }
+
+
+    /**
+     * Runs help command
+     */
+	public static function help ()
+	{
+		self::display("
+  ____       _     _       _____
+ / __ \     (_)   | |     / ____|
+| |  | |_  ___  __| | ___| |     ___  _ __ ___  _ __   ___  ___  ___ _ __
+| |  | \ \/ / |/ _` |/ _ \ |    / _ \| '_ ` _ \| '_ \ / _ \/ __|/ _ \ '__|
+| |__| |>  <| | (_| |  __/ |___| (_) | | | | | | |_) | (_) \__ \  __/ |
+ \____//_/\_\_|\__,_|\___|\_____\___/|_| |_| |_| .__/ \___/|___/\___|_|
+ 					       | |
+ 					       |_|
+<green>OxideComposer</green> version <yellow>0.2</yellow> 2016-03-25
+
+<yellow>Usage:</yellow>
+	[options] command [arguments]
+
+<yellow>Options:</yellow>
+	<green>-d</green>		Prints Exception traces
+
+<yellow>Available commands:</yellow>
+	<green>about</green>		Short information about OxideComposer
+	<green>install</green>		Installs the plugin set as argument1 Ex: 'ocomposer.phar install kits.668'
+	<green>update</green>		Updates your plugins to the latest version according to ocomposer.json & installed.json
+	<green>validate</green>        Validates ocomposer.json & installed.json
+		");
+	}
+}
+
+
+
+/**
+ * Class Oxide
+ * Helper to talk with oxidemod.org
+ */
+class Oxide
+{
+	private $domain = "http://oxidemod.org/";
+	private $cookies = "/tmp/oxide-cookies.txt";
+	public static $fileName;
+
+	const NOT_FOUND_MESSAGE = "The requested plugin could not be found.";
+	const INVALID_LOGIN_MESSAGE = 'class="errorPanel"';
+
+	public function __construct ($params = [])
+	{
+		if (isset($params["cookiesPath"])) {
+			$this->cookies = $params["cookiesPath"];
+		}
+	}
+
+    /**
+     * Downloads a plugin, returns plugin name & it's content
+     * @param string $id
+     * @param int $version
+     * @return stdClass
+     */
+	public function downloadPlugin ($id, $version)
+	{
+		$download = new stdClass();
+		$download->content = $this->query("plugins/" . $id . "/download?version=" . $version, [], true);
+		$download->file = Oxide::$fileName;
+
+		Oxide::$fileName = "";
+
+		return $download;
+	}
+
+    /**
+     * Gets plugin information, like the require data to download it later
+     * @param string $id
+     * @return stdClass
+     * @throws Exception If plugin was not found or failed when parsing the data
+     */
+	public function getPlugin ($id)
+	{
+		$response = $this->query("plugins/" . $id);
+
+		if (Utils::contains($response, self::NOT_FOUND_MESSAGE)) {
+			throw new Exception("Plugin " . $id . " not found");
+		}
+
+		$plugin = new stdClass();
+		$plugin->id = $id;
+
+		// get version
+		preg_match("/<h3>Version ([0-9.]+)<\/h3>/", $response, $matches);
+
+		if (!isset($matches[1])) {
+			throw new Exception("Couldn't get $id version");
+		}
+		$plugin->version = $matches[1];
+
+		// get download id
+		preg_match('/\/download\?version=([0-9]+)/', $response, $matches);
+
+		if (!isset($matches[1])) {
+			throw new Exception("Couldn't get $id downloadId");
+		}
+		$plugin->download = $matches[1];
+
+		return $plugin;
+	}
+
+    /**
+     * Logins to oxidemod.org
+     * @param string $user
+     * @param string $password
+     * @return bool
+     */
+	public function login ($user, $password)
+	{
+		// prevent doing unnecessary logins
+		if (file_exists($this->cookies))
+		{
+			$lastLogin = filemtime($this->cookies);
+
+			if ($lastLogin > strtotime("-3 days")) {
+				return true;
+			}
+		}
+		$response = $this->query("login/login", [
+			'login' => $user,
+			'password' => $password,
+			"remember" => 1
+		]);
+
+		if (Utils::contains($response, self::INVALID_LOGIN_MESSAGE)) {
+			return false;
+		}
+
+		return true;
+	}
+
+    /**
+     * Queries to the page
+     * @param string $path
+     * @param array $params
+     * @param bool $downloadMode If true, search for a filename in curl headers
+     * @return mixed
+     */
+	public function query ($path, $params = [], $downloadMode = false)
+	{
+		return $this->curl($this->domain . $path, $params, $downloadMode);
+	}
+
+    /**
+     * Makes the curl request
+     * @param string $url
+     * @param array $params
+     * @param bool $downloadMode If true, search for a filename in curl headers
+     * @return mixed
+     */
+	private function curl($url, $params = [], $downloadMode = false)
+	{
+		$ch = curl_init($url);
+		$header = [];
+		$header[0]  = "Accept: text/xml,application/xml,application/xhtml+xml,";
+		$header[0] .= "text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5";
+		$header[]   = "Cache-Control: max-age=0";
+		$header[]   = "Connection: keep-alive";
+		$header[]   = "Keep-Alive: 300";
+		$header[]   = "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7";
+		$header[]   = "Accept-Language: en-us,en;q=0.5";
+		$header[]   = "Pragma: "; // browsers keep this blank.
+
+		curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.2; en-US; rv:1.8.1.7) Gecko/20070914 Firefox/2.0.0.7');
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+
+		if (sizeof($params) > 0)
+		{
+			curl_setopt($ch, CURLOPT_POST, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+
+			if (isset($params["login"])) {
+				curl_setopt($ch, CURLOPT_COOKIEJAR, $this->cookies);
+			}
+
+		}
+		curl_setopt($ch, CURLOPT_COOKIEFILE, $this->cookies);
+
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_URL, $url);
+
+		if ($downloadMode)
+		{
+			curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) {
+				preg_match('/filename="(.*)?"/', $header, $matches);
+
+				if (isset($matches[1])) {
+					Oxide::$fileName = $matches[1];
+				}
+
+				return strlen($header);
+	   		 });
+		}
+
+		return curl_exec($ch);
+	}
+}
+
+
+
+class OxideComposer
+{
+	private $installedFile = "installed.json";
+	private $composerFile = "ocomposer.json";
+	private $composerFolder = "composer/";
+	private $config;
+	private $oxide;
+	private $installedPlugins;
+
+	public function __construct ()
+	{
+		if (!file_exists($this->composerFile)) {
+			throw new Exception($this->composerFile . " not found", 1);
+		}
+
+		if (!is_dir($this->composerFolder)) {
+			$success = mkdir($this->composerFolder);
+
+			if (!$success) {
+				throw new Exception("Could not create the required folder " . $this->composerFolder);
+			}
+
+			mkdir($this->composerFolder . "backups");
+		}
+
+		$this->checkDependencies();
+
+		$this->config = $this->getJson($this->composerFile);
+
+		if (empty($this->config)) {
+			throw new Exception("Invalid " . $this->composerFile . " | Fix it in http://json.parser.online.fr");
+		}
+
+		$this->installedPlugins = $this->getInstalledPlugins();
+	}
+
+    /**
+     * Cleans downloads folder (used for zipped plugins)
+     */
+	private function cleanTmpFolder ()
+	{
+		$tmpFolder = $this->composerFolder . "tmp/";
+		if (is_dir($tmpFolder)) {
+			rmdir($tmpFolder);
+		}
+		mkdir($tmpFolder);
+	}
+
+    /**
+     * Gets installed.json path
+     * @return string
+     */
+	public function getInstalledFilePath () {
+		return $this->composerFolder . $this->installedFile;
+	}
+
+    /**
+     * Gets the backup path based on backup's date
+     * @param string $date
+     * @return string
+     */
+	public function getBackupFilePath ($date) {
+		return $this->composerFolder . "backups/$date.zip";
+	}
+
+    /**
+     * Gets the currently installed plugin list
+     * @return mixed|stdClass
+     * @throws Exception
+     */
+	public function getInstalledPlugins ()
+	{
+		$installedJsonPath = $this->getInstalledFilePath();
+
+		if (!file_exists($installedJsonPath)) {
+			return new stdClass();
+		}
+
+		$plugins = $this->getJson($installedJsonPath);
+
+		if (empty($plugins)) {
+			throw new Exception("Invalid $installedJsonPath | Fix it in http://json.parser.online.fr");
+		}
+
+		return $plugins;
+	}
+
+    /**
+     * Saves the list of installed plugins
+     * @throws Exception
+     */
+	public function saveInstalledPlugins ()
+	{
+		$this->setJson($this->getInstalledFilePath(), $this->installedPlugins);
+	}
+
+    /**
+     * Gets & decodes a json file
+     * @param string $file
+     * @param bool $toArray
+     * @return mixed
+     */
+	private function getJson ($file, $toArray = false) {
+		return json_decode(file_get_contents($file), $toArray);
+	}
+
+    /**
+     * Encodes & saves a json file
+     * @param string $file
+     * @param string $content
+     * @throws Exception If save fails
+     */
+	private function setJson ($file, $content)
+	{
+		$success = file_put_contents($file, json_encode($content, JSON_PRETTY_PRINT));
+
+		if ($success === false) {
+			throw new Exception("Could not create/update " . $file);
+		}
+	}
+
+    /**
+     * Checks if the server has the required dependencies
+     * @throws Exception If a dependency is missing
+     */
+	private function checkDependencies ()
+	{
+		if(empty(shell_exec("which zip"))) {
+			throw new Exception("Missing required zip dependency");
+		}
+	}
+
+    /**
+     * Saves ocomposer.json file
+     * @throws Exception If save fails
+     */
+	private function saveConfig () {
+		$this->setJson($this->composerFile, $this->config);
+	}
+
+    /**
+     * Starts Oxide helper and logins user
+     * @throws Exception If login fails or the required data is missing
+     */
+	private function initOxide ()
+	{
+		if (empty($this->oxide))
+		{
+			if (!isset($this->config->login) || !isset($this->config->login->user) || !isset($this->config->login->password)) {
+				throw new Exception("Missing required oxide login params");
+			}
+
+			$this->oxide = new Oxide();
+			$logged = $this->oxide->login($this->config->login->user, $this->config->login->password);
+
+			if (!$logged) {
+				throw new Exception("Login failed");
+			}
+		}
+	}
+
+    /**
+     * Installs a plugin
+     * @param string $pluginId
+     * @throws Exception
+     */
+	public function install ($pluginId)
+	{
+		if (isset($this->config->plugins->{$pluginId})) {
+			throw new Exception("Plugin already installed");
+		}
+
+		$this->config->plugins->{$pluginId} = false;
+		$this->initOxide();
+
+		Utils::p("Installing $pluginId");
+		$this->installPlugin($this->oxide->getPlugin($pluginId));
+
+		$this->saveConfig();
+		$this->saveInstalledPlugins();
+		Utils::p("Done");
+	}
+
+    /**
+     * Checks for installed plugins updates
+     * @return bool
+     * @throws Exception
+     */
+	public function update ()
+	{
+		$this->cleanTmpFolder();
+		$this->initOxide();
+
+		/*
+			CHECK FOR NEWER VERSIONS
+		*/
+
+		$updateList = [];
+
+		foreach ($this->config->plugins as $pluginId => $allowMajorReleases)
+		{
+			Utils::p("Checking $pluginId");
+
+			$plugin = $this->oxide->getPlugin($pluginId);
+
+			if (!isset($this->installedPlugins->{$pluginId})) {
+				$updateList[] = $plugin;
+				continue;
+			}
+
+			$isGreater = Utils::isGreater($plugin->version, $this->installedPlugins->{$pluginId}->version);
+
+			if (!$isGreater || ($isGreater == 2 && !$allowMajorReleases)) {
+				if ($isGreater == 2) {
+					Utils::p("  ==> has a major release, not updating");
+				}
+				continue;
+			}
+
+			$updateList[] = $plugin;
+		}
+
+		if (sizeof($updateList) == 0) {
+			Utils::p("All up to date");
+			return true;
+		}
+
+		/*
+			MAKE A BACKUP
+		*/
+
+		$backupFile = $this->getBackupFilePath(date("Y_m_d__H_i_s"));
+		Utils::p("================================\n\nCreating backup $backupFile\n\n================================");
+
+		// zip oxide folder, excluding the logs subdirectory
+		$out = CommandLine::runCommand("zip -r $backupFile " . $this->config->oxideFolder . ' -x "' . $this->config->oxideFolder . 'logs/*"');
+
+		if (sizeof($out) < 3) {
+			throw new Exception("Could not create the backup $backupFile");
+		}
+
+
+		/*
+			APPLY UPDATES
+		*/
+		foreach ($updateList as $plugin)
+		{
+            $currentVersion = 0;
+
+            if (isset($this->installedPlugins->{$plugin->id})) {
+                $currentVersion = $this->installedPlugins->{$plugin->id}->version;
+            }
+
+			Utils::p("Updating " . $plugin->id . " --- " . $currentVersion . " => " . $plugin->version);
+			$this->installPlugin($plugin);
+		}
+
+		$this->saveInstalledPlugins();
+		Utils::p("Done, go check if everything is OK");
+		return true;
+	}
+
+    /**
+     * Installs a plugin in the rust server
+     * @param array $plugin
+     * @throws Exception
+     */
+	private function installPlugin ($plugin)
+	{
+		$pluginId = $plugin->id;
+		$download = $this->oxide->downloadPlugin($plugin->id, $plugin->download);
+
+		if (empty($download->content) || empty($download->file)) {
+			throw new Exception("Failed to download " . $plugin->id);
+		}
+
+		$pathInfo = pathinfo($download->file);
+
+		if ($pathInfo == "zip") {
+			// we will have to unzip it first
+			$filePath = $this->composerFolder . "tmp/" . $download->file;
+			throw new Exception("ZIP plugins are currently not supported");
+		} else {
+			$filePath = $this->config->oxideFolder . "plugins/" . $download->file;
+		}
+
+		$success = file_put_contents($filePath, $download->content);
+
+		if ($success === false) {
+			throw new Exception("Couldn't write $filePath");
+		}
+
+		// update installed.json
+		if (!isset($this->installedPlugins->{$pluginId})) {
+			$this->installedPlugins->{$pluginId} = new stdClass();
+			$this->installedPlugins->{$pluginId}->time = date("Y-m-d H:i:s");
+			$this->installedPlugins->{$pluginId}->version = 0;
+		}
+		$this->installedPlugins->{$pluginId}->version = $plugin->version;
+	}
+}
+
+CommandLine::init($argv);

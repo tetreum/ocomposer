@@ -57,12 +57,14 @@ class Utils
      * Prints a message adapted to cli or browser
      * @param string $message
      */
-	public static function p($message)
+	public static function p($message, $newline = true)
     {
-        if (php_sapi_name() === 'cli') {
-  			$message .= "\n";
-		} else {
-			$message .= "<br>";
+		if ($newline) {
+			if (php_sapi_name() === 'cli') {
+				$message .= "\n";
+			} else {
+				$message .= "<br>";
+			}
 		}
 
 		echo $message;

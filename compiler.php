@@ -5,7 +5,7 @@
     This compiler is temporal while i check how to work with external files in a PHAR
 ***********************************/
 
-$endFile = 'ocomposer';
+$endFile = 'compiled/ocomposer';
 $content = "#!/usr/bin/env php \n<?php\n";
 
 

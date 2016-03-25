@@ -25,6 +25,16 @@ class CommandLine
      */
 	public static function init ($arguments)
 	{
+        // check if ocomposer.json exists
+        try {
+            new OxideComposer();
+        } catch (Exception $e) {
+            if ($e->getCode() === 1) {
+                self::setup();
+                return;
+            }
+        }
+
         if (!isset($arguments[1])) {
             $arguments[1] = "help";
         }
@@ -81,7 +91,7 @@ class CommandLine
 	{
         // OComposer construct already Validates them
         try {
-            $composer = new OxideComposer();
+            new OxideComposer();
         } catch (Exception $e)
 		{
 			if (self::$debug) {
@@ -145,10 +155,92 @@ class CommandLine
      * Colors & prints the given text
      * @param string $text
      */
-	public static function display ($text)
+	public static function display ($text, $newline = true)
 	{
-		Utils::p(preg_replace(self::$colorTags, self::$colorReplacements, $text));
+		Utils::p(preg_replace(self::$colorTags, self::$colorReplacements, $text), $newline);
 	}
+
+    public static function setup ()
+    {
+        self::display("Config file (ocomposer.json) not found, starting setup....");
+
+        $paths = self::runCommand("find / -name \"oxide\" -type d");
+        if (empty($paths) || sizeof($paths) == 0) {
+            self::display("<red>Unable to find any /oxide/ folder in your server.</red>");
+            return;
+        }
+
+        $setupData = new stdClass();
+        $setupData->plugins = new stdClass();
+        $setupData->login = new stdClass();
+
+        self::display("<yellow>Ocomposer needs an OxideMod.org account to download the plugins, your login details will be saved in ocomposer.json.</yellow>");
+
+        self::prompt("Username: ", function ($response) use(&$setupData) {
+            $setupData->login->user = $response;
+        });
+
+        self::prompt("Password: ", function ($response) use(&$setupData) {
+            $setupData->login->password = $response;
+        });
+
+        self::display("<yellow>Select your server /serverfiles/ folder:</yellow>");
+        $plainList = "";
+
+        foreach ($paths as $k => $v) {
+            $plainList .= "[$k] - $v\n";
+        }
+        self::display($plainList);
+
+        self::prompt("Input the number: ", function ($response) use(&$setupData, $paths) {
+            $number = (int)$response;
+
+            if ($number > sizeof($paths) || $number < 0) {
+                $number = 0;
+            }
+
+            $setupData->oxideFolder = $paths[$number] . "/";
+        });
+
+        $saved = file_put_contents("ocomposer.json", json_encode($setupData, JSON_PRETTY_PRINT));
+
+        if ($saved === false) {
+            self::display("<red>Could not save ocomposer.json</red>");
+        } else {
+            self::display("<green>Config saved</green>");
+        }
+    }
+
+    /**
+     * Prompts a message requesting user input
+     * @param string $message
+     * @param $callback
+     * @param boolean $newline
+     */
+    public static function prompt ($message, $callback, $newline = false)
+    {
+        self::display($message, $newline);
+
+        $handle = fopen ("php://stdin","r");
+        $line = fgets($handle);
+
+        $callback(trim($line));
+
+        fclose($handle);
+    }
+
+    /**
+     * Runs a terminal command
+     * @param string $command
+     * @return mixed
+     */
+    public static function runCommand ($command)
+    {
+        exec($command, $out);
+
+        return $out;
+    }
+
 
     /**
      * Runs help command
@@ -164,7 +256,7 @@ class CommandLine
  \____//_/\_\_|\__,_|\___|\_____\___/|_| |_| |_| .__/ \___/|___/\___|_|
  					       | |
  					       |_|
-<green>OxideComposer</green> version <yellow>0.1</yellow> 2016-03-11
+<green>OxideComposer</green> version <yellow>0.2</yellow> 2016-03-25
 
 <yellow>Usage:</yellow>
 	[options] command [arguments]

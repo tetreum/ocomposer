@@ -1,1 +1,0 @@
-wget http://gameriso.com/ocomposer && chmod +x ./ocomposer && mv ./ocomposer /usr/bin/;

@@ -4,7 +4,7 @@
     Creates the OxideComposer PHAR
 ***********************************/
 
-$endFile = 'ocomposer.phar';
+$endFile = 'compiled/ocomposer.phar';
 if (!Phar::canWrite()) {
     throw new Exception("phar.readonly must be 0 in php.ini");
 }
