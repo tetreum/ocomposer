@@ -33,7 +33,8 @@ Check for updates
 Requirements
 ------------
 
-- PHP 5.5  or above.
+- PHP 5.5 or above.
+- curl (`apt-get install php5 php5-curl`)
 - zip (`apt-get install zip`)
 
 

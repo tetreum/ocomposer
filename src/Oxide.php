@@ -55,7 +55,7 @@ class Oxide
 		$plugin->id = $id;
 
 		// get version
-		preg_match("/<h3>Version ([0-9.]+)<\/h3>/", $response, $matches);
+		preg_match("/<h3>Version ([0-9.-]+)<\/h3>/", $response, $matches);
 
 		if (!isset($matches[1])) {
 			throw new Exception("Couldn't get $id version");
