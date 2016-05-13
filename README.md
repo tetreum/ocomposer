@@ -28,7 +28,10 @@ Example: having `http://oxidemod.org/plugins/stack-size-controller.1185/` => `oc
 Check for updates
 ------------
 
-1. Run `ocomposer update` to check for updates. A ZIP backup of plugins & it's data will be made before each update. The backups will be located in `composer/backups/` folder.
+1. Run `ocomposer update` to check for plugin updates. A ZIP backup of plugins & it's data will be made before each update. The backups will be located in `composer/backups/` folder.
+
+To update rust server & oxide too (beta, but im using it in production :p)
+1. Run `ocomposer full-update`
 
 Requirements
 ------------
@@ -36,6 +39,7 @@ Requirements
 - PHP 5.5 or above.
 - curl (`apt-get install php5 php5-curl`)
 - zip (`apt-get install zip`)
+- unzip (`apt-get install unzip`)
 
 
 ToDo

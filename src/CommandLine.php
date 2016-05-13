@@ -6,25 +6,25 @@
  */
 class CommandLine
 {
-	public static $debug = false;
+    public static $debug = false;
 
-	public static $colorTags = [
-		"/<red>(.*)?<\/red>/",
-		"/<yellow>(.*)?<\/yellow>/",
-		"/<green>(.*)?<\/green>/",
-	];
-	public static $colorReplacements = [
-		"\033[31m$1\033[0m",
-		"\033[33m$1\033[0m",
-		"\033[32m$1\033[0m",
-	];
+    public static $colorTags = [
+        "/<red>(.*)?<\/red>/",
+        "/<yellow>(.*)?<\/yellow>/",
+        "/<green>(.*)?<\/green>/",
+    ];
+    public static $colorReplacements = [
+        "\033[31m$1\033[0m",
+        "\033[33m$1\033[0m",
+        "\033[32m$1\033[0m",
+    ];
 
     /***
      * Parses the received command && decides which command must run
      * @param array $arguments
      */
-	public static function init ($arguments)
-	{
+    public static function init($arguments)
+    {
         // check if ocomposer.json exists
         try {
             new OxideComposer();
@@ -39,68 +39,63 @@ class CommandLine
             $arguments[1] = "help";
         }
 
-		self::parseOptions($arguments);
+        self::parseOptions($arguments);
 
-		switch ($arguments[1])
-		{
-			case "install":
-				self::install($arguments[2]);
-			break;
-			case "update":
-				self::update();
-			break;
-			case "about":
-				self::about();
-			break;
+        switch ($arguments[1]) {
+            case "install":
+                self::install($arguments[2]);
+                break;
+            case "update":
+                self::update();
+                break;
+            case "about":
+                self::about();
+                break;
             case "validate":
-				self::validate();
-			break;
-			default:
-				self::help();
-			break;
-		}
-	}
+                self::validate();
+                break;
+            case "full-update":
+                self::fullUpdate();
+                break;
+            default:
+                self::help();
+                break;
+        }
+    }
 
     /**
      * Checks for options in arguments list
      * @param array $arguments
      */
-	public static function parseOptions (&$arguments)
-	{
+    public static function parseOptions(&$arguments)
+    {
         $firstChar = substr($arguments[1], 0, 1);
 
-		if ($firstChar == "-")
-		{
-			$option = substr($arguments[1], 1);
+        if ($firstChar == "-") {
+            $option = substr($arguments[1], 1);
 
-			switch ($option) {
-				case "d":
-					self::$debug = true;
-				break;
-			}
-			// delete the option from arguments list
-			unset($arguments[1]);
-			$arguments = array_values($arguments);
-		}
-	}
+            switch ($option) {
+                case "d":
+                    self::$debug = true;
+                    break;
+            }
+            // delete the option from arguments list
+            unset($arguments[1]);
+            $arguments = array_values($arguments);
+        }
+    }
 
     /**
      * Runs validate command
      */
-	public static function validate ()
-	{
+    public static function validate()
+    {
         // OComposer construct already Validates them
         try {
             new OxideComposer();
-        } catch (Exception $e)
-		{
-			if (self::$debug) {
-				echo $e->__toString();
-			} else {
-				self::display("<red>" . $e->getMessage() . "</red>");
-			}
-			exit;
-		}
+        } catch (Exception $e) {
+            self::handleError($e);
+        }
 
         self::display("<green>They seem valid</green>");
     }
@@ -109,58 +104,84 @@ class CommandLine
      * Runs install command
      * @param string $pluginId Ex: kits.668
      */
-	public static function install ($pluginId)
-	{
-		try {
+    public static function install($pluginId)
+    {
+        try {
             $composer = new OxideComposer();
-			$composer->install($pluginId);
-		} catch (Exception $e)
-		{
-			if (self::$debug) {
-				echo $e->__toString();
-			} else {
-				self::display("<red>" . $e->getMessage() . "</red>");
-			}
-			exit;
-		}
-	}
+            $composer->install($pluginId);
+        } catch (Exception $e) {
+            self::handleError($e);
+        }
+    }
+
+    public static function handleError($e)
+    {
+        if (self::$debug) {
+            echo $e->__toString();
+        } else {
+            self::display("<red>" . $e->getMessage() . "</red>");
+        }
+        exit;
+    }
 
     /**
      * Runs update command
      */
-	public static function update ()
-	{
-		try {
+    public static function update()
+    {
+        try {
             $composer = new OxideComposer();
-			$composer->update();
-		} catch (Exception $e)
-		{
-			if (self::$debug) {
-				echo $e->__toString();
-			} else {
-				self::display("<red>" . $e->getMessage() . "</red>");
-			}
-			exit;
-		}
-	}
+            $composer->update();
+        } catch (Exception $e) {
+            self::handleError($e);
+        }
+    }
+
+    /**
+     * Runs full update command
+     */
+    public static function fullUpdate()
+    {
+        try {
+            $composer = new OxideComposer();
+
+            self::display("Stopping server");
+            echo self::runCommand("cd .. && ./rustserver stop", true);
+
+            self::display("\n<yellow>Updating Oxide plugins</yellow>");
+            $composer->update();
+
+            self::display("<yellow>Updating Rust (will take a long time..)</yellow>");
+            $composer->updateRust();
+
+            self::display("\n<yellow>Updating Oxide (may take a while)</yellow>");
+            $composer->updateOxide();
+
+            self::display("<yellow>Starting server</yellow>");
+            echo self::runCommand("cd .. && ./rustserver start", true);
+        } catch (Exception $e) {
+            self::handleError($e);
+        }
+    }
 
     /**
      * Runs about command
      */
-	public static function about () {
-		self::display("<yellow>Ocomposer is an oxide plugin manager for your servers.</yellow>\n<yellow>See https://github.com/tetreum/ocomposer for more information.</yellow>");
-	}
+    public static function about()
+    {
+        self::display("<yellow>Ocomposer is an oxide plugin manager for your servers.</yellow>\n<yellow>See https://github.com/tetreum/ocomposer for more information.</yellow>");
+    }
 
     /**
      * Colors & prints the given text
      * @param string $text
      */
-	public static function display ($text, $newline = true)
-	{
-		Utils::p(preg_replace(self::$colorTags, self::$colorReplacements, $text), $newline);
-	}
+    public static function display($text, $newline = true)
+    {
+        Utils::p(preg_replace(self::$colorTags, self::$colorReplacements, $text), $newline);
+    }
 
-    public static function setup ()
+    public static function setup()
     {
         self::display("Config file (ocomposer.json) not found, starting setup....");
 
@@ -176,11 +197,11 @@ class CommandLine
 
         self::display("<yellow>Ocomposer needs an OxideMod.org account to download the plugins, your login details will be saved in ocomposer.json.</yellow>");
 
-        self::prompt("Username: ", function ($response) use(&$setupData) {
+        self::prompt("Username: ", function ($response) use (&$setupData) {
             $setupData->login->user = $response;
         });
 
-        self::prompt("Password: ", function ($response) use(&$setupData) {
+        self::prompt("Password: ", function ($response) use (&$setupData) {
             $setupData->login->password = $response;
         });
 
@@ -192,7 +213,7 @@ class CommandLine
         }
         self::display($plainList);
 
-        self::prompt("Input the number: ", function ($response) use(&$setupData, $paths) {
+        self::prompt("Input the number: ", function ($response) use (&$setupData, $paths) {
             $number = (int)$response;
 
             if ($number > sizeof($paths) || $number < 0) {
@@ -217,11 +238,11 @@ class CommandLine
      * @param $callback
      * @param boolean $newline
      */
-    public static function prompt ($message, $callback, $newline = false)
+    public static function prompt($message, $callback, $newline = false)
     {
         self::display($message, $newline);
 
-        $handle = fopen ("php://stdin","r");
+        $handle = fopen("php://stdin", "r");
         $line = fgets($handle);
 
         $callback(trim($line));
@@ -232,11 +253,16 @@ class CommandLine
     /**
      * Runs a terminal command
      * @param string $command
+     * @param bool $stringOutput force string output
      * @return mixed
      */
-    public static function runCommand ($command)
+    public static function runCommand($command, $stringOutput = false)
     {
         exec($command, $out);
+
+        if ($stringOutput && is_array($out)) {
+            $out = implode("\n", $out);
+        }
 
         return $out;
     }
@@ -245,9 +271,9 @@ class CommandLine
     /**
      * Runs help command
      */
-	public static function help ()
-	{
-		self::display("
+    public static function help()
+    {
+        self::display("
   ____       _     _       _____
  / __ \     (_)   | |     / ____|
 | |  | |_  ___  __| | ___| |     ___  _ __ ___  _ __   ___  ___  ___ _ __
@@ -256,7 +282,7 @@ class CommandLine
  \____//_/\_\_|\__,_|\___|\_____\___/|_| |_| |_| .__/ \___/|___/\___|_|
  					       | |
  					       |_|
-<green>OxideComposer</green> version <yellow>0.2</yellow> 2016-03-25
+<green>OxideComposer</green> version <yellow>0.3</yellow> 2016-03-25
 
 <yellow>Usage:</yellow>
 	[options] command [arguments]
@@ -270,5 +296,5 @@ class CommandLine
 	<green>update</green>		Updates your plugins to the latest version according to ocomposer.json & installed.json
 	<green>validate</green>        Validates ocomposer.json & installed.json
 		");
-	}
+    }
 }
