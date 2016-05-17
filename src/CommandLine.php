@@ -207,7 +207,7 @@ class CommandLine
         self::display("\n<yellow>Updating OComposer</yellow>");
         $result = self::runCommand("curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash", true);
 
-        if (strpos($result, "Operation not permitted")) {
+        if (strpos($result, "Operation not permitted") !== false || strpos($result, "Permission denied") !== false) {
             self::display("<red>You must be sudoer to run this command</red>");
             exit;
         }
@@ -345,8 +345,8 @@ class CommandLine
 	<green>about</green>		Short information about OxideComposer
 	<green>install</green>		Installs the plugin set as argument1 Ex: 'ocomposer.phar install kits.668'
 	<green>update</green>		Updates your plugins to the latest version according to ocomposer.json & installed.json
-	<green>full-update</green>		Updates Rust, Oxide & it's plugins
-	<green>self-update</green>		Updates OComposer to it's latest version
+	<green>full-update</green>	Updates Rust server (LGSM), Oxide & it's plugins
+	<green>self-update</green>	Updates OComposer to it's latest version
 	<green>validate</green>        Validates ocomposer.json & installed.json
 		");
     }
