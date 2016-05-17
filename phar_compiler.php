@@ -2,6 +2,7 @@
 
 /**********************************
     Creates the OxideComposer PHAR
+ * Not working | Not used
 ***********************************/
 
 $endFile = 'compiled/ocomposer.phar';

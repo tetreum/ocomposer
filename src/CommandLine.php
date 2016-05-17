@@ -6,6 +6,9 @@
  */
 class CommandLine
 {
+    const INSTALLED_VERSION = "0.4";
+    const RELEASE_DATE = "2016-05-18";
+
     public static $debug = false;
 
     public static $colorTags = [
@@ -25,6 +28,8 @@ class CommandLine
      */
     public static function init($arguments)
     {
+        self::checkForUpdates();
+
         // check if ocomposer.json exists
         try {
             new OxideComposer();
@@ -57,6 +62,9 @@ class CommandLine
             case "full-update":
                 self::fullUpdate();
                 break;
+            case "self-update":
+                self::selfUpdate();
+                break;
             default:
                 self::help();
                 break;
@@ -86,6 +94,18 @@ class CommandLine
     }
 
     /**
+     * Searches for OComposer updates
+     */
+    public static function checkForUpdates ()
+    {
+        $currentVersion = @file_get_contents("https://raw.githubusercontent.com/tetreum/ocomposer/master/currentVersion.txt");
+
+        if (!empty($currentVersion) && $currentVersion != self::INSTALLED_VERSION) {
+            self::display("<yellow>A newer version of OComposer is available, run 'ocomposer self-update' to update it</yellow>\n\n");
+        }
+    }
+
+    /**
      * Runs validate command
      */
     public static function validate()
@@ -108,12 +128,27 @@ class CommandLine
     {
         try {
             $composer = new OxideComposer();
+
+            // convert http://oxidemod.org/plugins/stack-size-controller.1185/
+            // to stack-size-controller.1185
+            if (strpos($pluginId, "http://") !== false) {
+                preg_match("/\/plugins\/(.*)?\//", $pluginId, $matches);
+
+                if (isset($matches[1]) && !empty($matches[1])) {
+                    $pluginId = $matches[1];
+                }
+            }
+
             $composer->install($pluginId);
         } catch (Exception $e) {
             self::handleError($e);
         }
     }
 
+    /**
+     * Handles the app Exceptions
+     * @param Exception $e Exception to handle
+     */
     public static function handleError($e)
     {
         if (self::$debug) {
@@ -162,6 +197,25 @@ class CommandLine
         } catch (Exception $e) {
             self::handleError($e);
         }
+    }
+
+    /**
+     * Updates OComposer to its latest version
+     */
+    public static function selfUpdate ()
+    {
+        self::display("\n<yellow>Updating OComposer</yellow>");
+        self::runCommand("curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash");
+
+        $dateFormat = "Y-m-d H:i";
+        $fileDate = date($dateFormat, filemtime("/usr/bin/ocomposer"));
+
+        if ($fileDate != date($dateFormat)) {
+            self::display("<red>You must be sudoer to run this command</red>");
+            exit;
+        }
+
+        self::display("<green>¡Successfully updated!</green>");
     }
 
     /**
@@ -282,7 +336,7 @@ class CommandLine
  \____//_/\_\_|\__,_|\___|\_____\___/|_| |_| |_| .__/ \___/|___/\___|_|
  					       | |
  					       |_|
-<green>OxideComposer</green> version <yellow>0.3</yellow> 2016-03-25
+<green>OxideComposer</green> version <yellow>" . self::INSTALLED_VERSION . "</yellow> " . self::RELEASE_DATE . "
 
 <yellow>Usage:</yellow>
 	[options] command [arguments]
@@ -294,6 +348,8 @@ class CommandLine
 	<green>about</green>		Short information about OxideComposer
 	<green>install</green>		Installs the plugin set as argument1 Ex: 'ocomposer.phar install kits.668'
 	<green>update</green>		Updates your plugins to the latest version according to ocomposer.json & installed.json
+	<green>full-update</green>	Updates Rust server (LGSM), Oxide & it's plugins
+	<green>self-update</green>	Updates OComposer to it's latest version
 	<green>validate</green>        Validates ocomposer.json & installed.json
 		");
     }
