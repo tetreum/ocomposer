@@ -10,7 +10,7 @@ Installation
 
 ![Ocomposer](https://raw.githubusercontent.com/tetreum/ocomposer/master/screenshots/ocomposer.gif)
 
-1.  Download the [`ocomposer`](https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer) executable or use the installer as root.
+1.  Run the following installer as root.
 
     ``` sh
     $ curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash
@@ -18,12 +18,14 @@ Installation
 2. Run `ocomposer` in the same folder as `/RustDedicated_Data/` is located and follow the setup steps.
 
 
-Install new plugins/list already installed ones
+Install new plugins
 ------------
 
-1. Run `ocomposer install PLUGIN_ID` . 
+1. Run `ocomposer install PLUGIN_URL` . 
 
-Example: having `http://oxidemod.org/plugins/stack-size-controller.1185/` => `ocomposer install stack-size-controller.1185` .
+Example: 
+- `ocomposer install http://oxidemod.org/plugins/stack-size-controller.1185/`
+- `ocomposer install stack-size-controller.1185`
 
 Check for updates
 ------------
@@ -32,6 +34,11 @@ Check for updates
 
 To update rust server & oxide too (beta, but im using it in production :p)
 1. Run `ocomposer full-update`
+
+¡I already had installed plugins before installing ocomposer!
+------------
+
+Follow "Install new plugins" step, the existing configuration of that plugin WON'T be replaced/deleted :)
 
 Requirements
 ------------
