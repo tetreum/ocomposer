@@ -205,9 +205,12 @@ class CommandLine
     public static function selfUpdate ()
     {
         self::display("\n<yellow>Updating OComposer</yellow>");
-        $result = self::runCommand("curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash", true);
+        self::runCommand("curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash");
 
-        if (strpos($result, "Operation not permitted") !== false || strpos($result, "Permission denied") !== false) {
+        $dateFormat = "Y-m-d H:i";
+        $fileDate = date($dateFormat, filemtime("/usr/bin/ocomposer"));
+
+        if ($fileDate != date($dateFormat)) {
             self::display("<red>You must be sudoer to run this command</red>");
             exit;
         }
