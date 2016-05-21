@@ -280,9 +280,9 @@ class CommandLine
     public static function selfUpdate ()
     {
         self::display("\n<yellow>Updating OComposer</yellow>");
-        self::runCommand("curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash", true);
+        self::runCommand("curl -s https://raw.githubusercontent.com/tetreum/ocomposer/master/compiled/installer | bash");
 
-	    $dateFormat = "Y-m-d H:i";
+        $dateFormat = "Y-m-d H:i";
         $fileDate = date($dateFormat, filemtime("/usr/bin/ocomposer"));
 
         if ($fileDate != date($dateFormat)) {
