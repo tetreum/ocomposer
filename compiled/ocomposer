@@ -174,6 +174,7 @@ class CommandLine
     public static function checkForUpdates ()
     {
         $currentVersion = @file_get_contents("https://raw.githubusercontent.com/tetreum/ocomposer/master/currentVersion.txt");
+	$currentVersion = trim($currentVersion);
 
         if (!empty($currentVersion) && $currentVersion != self::INSTALLED_VERSION) {
             self::display("<yellow>A newer version of OComposer is available, run 'ocomposer self-update' to update it</yellow>\n\n");
