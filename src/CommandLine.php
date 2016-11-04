@@ -6,8 +6,8 @@
  */
 class CommandLine
 {
-    const INSTALLED_VERSION = "0.4";
-    const RELEASE_DATE = "2016-05-18";
+    const INSTALLED_VERSION = "0.5";
+    const RELEASE_DATE = "2016-11-04";
 
     public static $debug = false;
 

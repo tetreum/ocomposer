@@ -81,8 +81,8 @@ class Utils
  */
 class CommandLine
 {
-    const INSTALLED_VERSION = "0.4";
-    const RELEASE_DATE = "2016-05-18";
+    const INSTALLED_VERSION = "0.5";
+    const RELEASE_DATE = "2016-11-04";
 
     public static $debug = false;
 
@@ -610,7 +610,7 @@ class OxideComposer
     private $composerFile = "ocomposer.json";
     private $composerFolder = "composer/";
     private $tmpPath = "/tmp/";
-    private $oxideLinuxZip = "https://github.com/OxideMod/Snapshots/raw/master/Oxide-Rust_Linux.zip";
+    private $oxideLinuxZip = "https://github.com/OxideMod/Snapshots/raw/master/Oxide-Rust.zip";
     private $config;
     private $oxide;
     private $installedPlugins;
