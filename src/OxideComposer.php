@@ -6,7 +6,7 @@ class OxideComposer
     private $composerFile = "ocomposer.json";
     private $composerFolder = "composer/";
     private $tmpPath = "/tmp/";
-    private $oxideLinuxZip = "https://github.com/OxideMod/Snapshots/raw/master/Oxide-Rust_Linux.zip";
+    private $oxideLinuxZip = "https://github.com/OxideMod/Snapshots/raw/master/Oxide-Rust.zip";
     private $config;
     private $oxide;
     private $installedPlugins;
